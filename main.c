@@ -18,13 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "usb_host.h"
-#include  "seg7.h"
-
-
-#define CHAR_T 29   // 0x78 → segments A + F + G → clean 'T'
-
-
+#include "seg7.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -41,7 +35,7 @@
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM *
+/* USER CODE BEGIN PM */
 
 /* USER CODE END PM */
 
@@ -50,9 +44,13 @@ I2C_HandleTypeDef hi2c1;
 
 I2S_HandleTypeDef hi2s3;
 
+RTC_HandleTypeDef hrtc;
+
 SPI_HandleTypeDef hspi1;
 
 TIM_HandleTypeDef htim7;
+
+UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
 
@@ -61,11 +59,8 @@ TIM_HandleTypeDef htim7;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_I2C1_Init(void);
-static void MX_I2S3_Init(void);
-static void MX_SPI1_Init(void);
 static void MX_TIM7_Init(void);
-void MX_USB_HOST_Process(void);
+
 
 /* USER CODE BEGIN PFP */
 
@@ -114,7 +109,6 @@ Music Song[100];
   */
 int main(void)
 {
-
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -137,11 +131,8 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_I2C1_Init();
-  MX_I2S3_Init();
-  MX_SPI1_Init();
-  MX_USB_HOST_Init();
   MX_TIM7_Init();
+  //MX_RTC_Init();
   /* USER CODE BEGIN 2 */
 
   /********************************************************************
@@ -161,6 +152,11 @@ int main(void)
   RCC->APB2ENR |= 1<<8;  // Turn on ADC1 clock by forcing bit 8 to 1 while keeping other bits unchanged
   ADC1->SMPR2 |= 1; // 15 clock cycles per sample
   ADC1->CR2 |= 1;        // Turn on ADC1 by forcing bit 0 to 1 while keeping other bits unchanged
+
+  /*** Configure Clock ***/
+  PWR->CR |= 1<<8;
+  RCC->BDCR |= 2<<8;
+  RCC->BDCR |= 1<<15;
 
   /*****************************************************************************************************
   These commands are handled as part of the MX_TIM7_Init() function and don't need to be enabled
@@ -193,515 +189,341 @@ int main(void)
   Song[2].space = 10;
   Song[2].end = 0;
 
-  Song[3].note = D4;
-  Song[3].size = quarter;
-  Song[3].tempo = 1400;
-  Song[3].space = 10;
-  Song[3].end = 0;
 
-  Song[4].note = A4;
-  Song[4].size = quarter;
-  Song[4].tempo = 1400;
-  Song[4].space = 10;
-  Song[4].end = 0;
+  static int initial_pos = 0;
 
-  Song[5].note = D5;
-  Song[5].size = quarter;
-  Song[5].tempo = 1400;
-  Song[5].space = 10;
-  Song[5].end = 0;
+  // Set Initial LED
+  GPIOD->ODR = (1 >> 0);
 
-  Song[6].note = A4;
-  Song[6].size = quarter;
-  Song[6].tempo = 1400;
-  Song[6].space = 10;
-  Song[6].end = 0;
-
-  Song[7].note = rest;
-  Song[7].size = quarter;
-  Song[7].tempo = 1400;
-  Song[7].space = 10;
-  Song[7].end = 0;
-
-  Song[8].note = A4;
-  Song[8].size = quarter;
-  Song[8].tempo = 1400;
-  Song[8].space = 10;
-  Song[8].end = 0;
-
-  Song[9].note = D5;
-  Song[9].size = quarter;
-  Song[9].tempo = 1400;
-  Song[9].space = 10;
-  Song[9].end = 0;
-
-  Song[10].note = A4;
-  Song[10].size = quarter;
-  Song[10].tempo = 1400;
-  Song[10].space = 10;
-  Song[10].end = 0;
-
-  Song[11].note = D5;
-  Song[11].size = quarter;
-  Song[11].tempo = 1400;
-  Song[11].space = 10;
-  Song[11].end = 0;
-
-  Song[12].note = Fs5_Gb5;
-  Song[12].size = quarter;
-  Song[12].tempo = 1400;
-  Song[12].space = 100;
-  Song[12].end = 0;
-
-  Song[13].note = rest;
-  Song[13].size = _8th;
-  Song[13].tempo = 1400;
-  Song[13].space = 10;
-  Song[13].end = 0;
-
-  Song[14].note = E5;
-  Song[14].size = _8th;
-  Song[14].tempo = 1400;
-  Song[14].space = 10;
-  Song[14].end = 0;
-
-  Song[15].note = D5;
-  Song[15].size = _8th;
-  Song[15].tempo = 1400;
-  Song[15].space = 10;
-  Song[15].end = 0;
-
-  Song[16].note = Cs5_Db5;
-  Song[16].size = _8th;
-  Song[16].tempo = 1400;
-  Song[16].space = 10;
-  Song[16].end = 0;
-
-  Song[17].note = B4;
-  Song[17].size = _8th;
-  Song[17].tempo = 1400;
-  Song[17].space = 10;
-  Song[17].end = 0;
-
-  Song[18].note = As4_Bb4;
-  Song[18].size = _8th;
-  Song[18].tempo = 1400;
-  Song[18].space = 10;
-  Song[18].end = 0;
-
-  Song[19].note = A4;
-  Song[19].size = quarter;
-  Song[19].tempo = 1400;
-  Song[19].space = 10;
-  Song[19].end = 0;
-
-  Song[20].note = D5;
-  Song[20].size = quarter;
-  Song[20].tempo = 1400;
-  Song[20].space = 10;
-  Song[20].end = 0;
-
-  Song[21].note = A4;
-  Song[21].size = quarter;
-  Song[21].tempo = 1400;
-  Song[21].space = 10;
-  Song[21].end = 0;
-
-  Song[22].note = Fs4_Gb4;
-  Song[22].size = _8th;
-  Song[22].tempo = 1400;
-  Song[22].space = 10;
-  Song[22].end = 0;
-
-  Song[23].note = G4;
-  Song[23].size = _8th;
-  Song[23].tempo = 1400;
-  Song[23].space = 10;
-  Song[23].end = 0;
-
-  Song[24].note = A4;
-  Song[24].size = quarter;
-  Song[24].tempo = 1400;
-  Song[24].space = 10;
-  Song[24].end = 0;
-
-  Song[25].note = D5;
-  Song[25].size = quarter;
-  Song[25].tempo = 1400;
-  Song[25].space = 10;
-  Song[25].end = 0;
-
-  Song[26].note = A4;
-  Song[26].size = quarter;
-  Song[26].tempo = 1400;
-  Song[26].space = 10;
-  Song[26].end = 0;
-
-  Song[27].note = rest;
-  Song[27].size = quarter;
-  Song[27].tempo = 1400;
-  Song[27].space = 10;
-  Song[27].end = 0;
-
-  Song[28].note = D5;
-  Song[28].size = quarter;
-  Song[28].tempo = 1400;
-  Song[28].space = 100;
-  Song[28].end = 0;
-
-  Song[29].note = rest;
-  Song[29].size = _8th;
-  Song[29].tempo = 1400;
-  Song[29].space = 10;
-  Song[29].end = 0;
-
-  Song[30].note = B4;
-  Song[30].size = _8th;
-  Song[30].tempo = 1400;
-  Song[30].space = 10;
-  Song[30].end = 0;
-
-  Song[31].note = A4;
-  Song[31].size = quarter;
-  Song[31].tempo = 1400;
-  Song[31].space = 100;
-  Song[31].end = 0;
-
-  Song[32].note = G4;
-  Song[32].size = quarter;
-  Song[32].tempo = 1400;
-  Song[32].space = 100;
-  Song[32].end = 0;
-
-  Song[33].note = Fs4_Gb4;
-  Song[33].size = quarter;
-  Song[33].tempo = 1400;
-  Song[33].space = 100;
-  Song[33].end = 0;
-
-  Song[34].note = E4;
-  Song[34].size = quarter;
-  Song[34].tempo = 1400;
-  Song[34].space = 100;
-  Song[34].end = 0;
-
-  Song[35].note = D4;
-  Song[35].size = quarter;
-  Song[35].tempo = 1400;
-  Song[35].space = 100;
-  Song[35].end = 0;
-
-  Song[36].note = rest;
-  Song[36].size = quarter;
-  Song[36].tempo = 1400;
-  Song[36].space = 10;
-  Song[36].end = 0;
-
-  Song[37].note = C5;
-  Song[37].size = quarter;
-  Song[37].tempo = 1400;
-  Song[37].space = 10;
-  Song[37].end = 0;
-
-  Song[38].note = F5;
-  Song[38].size = quarter;
-  Song[38].tempo = 1400;
-  Song[38].space = 10;
-  Song[38].end = 0;
-
-  Song[39].note = C5;
-  Song[39].size = quarter;
-  Song[39].tempo = 1400;
-  Song[39].space = 10;
-  Song[39].end = 0;
-
-  Song[40].note = F4;
-  Song[40].size = _8th;
-  Song[40].tempo = 1400;
-  Song[40].space = 10;
-  Song[40].end = 0;
-
-  Song[41].note = F4;
-  Song[41].size = _8th;
-  Song[41].tempo = 1400;
-  Song[41].space = 10;
-  Song[41].end = 0;
-
-  Song[42].note = C5;
-  Song[42].size = quarter;
-  Song[42].tempo = 1400;
-  Song[42].space = 10;
-  Song[42].end = 0;
-
-  Song[43].note = F5;
-  Song[43].size = quarter;
-  Song[43].tempo = 1400;
-  Song[43].space = 10;
-  Song[43].end = 0;
-
-  Song[44].note = C5;
-  Song[44].size = quarter;
-  Song[44].tempo = 1400;
-  Song[44].space = 10;
-  Song[44].end = 0;
-
-  Song[45].note = rest;
-  Song[45].size = quarter;
-  Song[45].tempo = 1400;
-  Song[45].space = 10;
-  Song[45].end = 0;
-
-  Song[46].note = C5;
-  Song[46].size = quarter;
-  Song[46].tempo = 1400;
-  Song[46].space = 10;
-  Song[46].end = 0;
-
-  Song[47].note = F5;
-  Song[47].size = quarter;
-  Song[47].tempo = 1400;
-  Song[47].space = 10;
-  Song[47].end = 0;
-
-  Song[48].note = C5;
-  Song[48].size = quarter;
-  Song[48].tempo = 1400;
-  Song[48].space = 10;
-  Song[48].end = 0;
-
-  Song[49].note = F5;
-  Song[49].size = quarter;
-  Song[49].tempo = 1400;
-  Song[49].space = 10;
-  Song[49].end = 0;
-
-  Song[50].note = A5;
-  Song[50].size = quarter;
-  Song[50].tempo = 1400;
-  Song[50].space = 0;
-  Song[50].end = 0;
-
-  Song[51].note = A5;
-  Song[51].size = _8th;
-  Song[51].tempo = 1400;
-  Song[51].space = 10;
-  Song[51].end = 0;
-
-  Song[52].note = G5;
-  Song[52].size = _8th;
-  Song[52].tempo = 1400;
-  Song[52].space = 10;
-  Song[52].end = 0;
-
-  Song[53].note = F5;
-  Song[53].size = _8th;
-  Song[53].tempo = 1400;
-  Song[53].space = 10;
-  Song[53].end = 0;
-
-  Song[54].note = E5;
-  Song[54].size = _8th;
-  Song[54].tempo = 1400;
-  Song[54].space = 10;
-  Song[54].end = 0;
-
-  Song[55].note = D5;
-  Song[55].size = _8th;
-  Song[55].tempo = 1400;
-  Song[55].space = 10;
-  Song[55].end = 0;
-
-  Song[56].note = Cs5_Db5;
-  Song[56].size = _8th;
-  Song[56].tempo = 1400;
-  Song[56].space = 10;
-  Song[56].end = 0;
-
-  Song[57].note = C5;
-  Song[57].size = quarter;
-  Song[57].tempo = 1400;
-  Song[57].space = 10;
-  Song[57].end = 0;
-
-  Song[58].note = F5;
-  Song[58].size = quarter;
-  Song[58].tempo = 1400;
-  Song[58].space = 10;
-  Song[58].end = 0;
-
-  Song[59].note = C5;
-  Song[59].size = quarter;
-  Song[59].tempo = 1400;
-  Song[59].space = 10;
-  Song[59].end = 0;
-
-  Song[60].note = A4;
-  Song[60].size = _8th;
-  Song[60].tempo = 1400;
-  Song[60].space = 10;
-  Song[60].end = 0;
-
-  Song[61].note = As4_Bb4;
-  Song[61].size = _8th;
-  Song[61].tempo = 1400;
-  Song[61].space = 10;
-  Song[61].end = 0;
-
-  Song[62].note = C5;
-  Song[62].size = quarter;
-  Song[62].tempo = 1400;
-  Song[62].space = 10;
-  Song[62].end = 0;
-
-  Song[63].note = F5;
-  Song[63].size = quarter;
-  Song[63].tempo = 1400;
-  Song[63].space = 10;
-  Song[63].end = 0;
-
-  Song[64].note = C5;
-  Song[64].size = quarter;
-  Song[64].tempo = 1400;
-  Song[64].space = 10;
-  Song[64].end = 0;
-
-  Song[65].note = rest;
-  Song[65].size = _16th;
-  Song[65].tempo = 1400;
-  Song[65].space = 10;
-  Song[65].end = 0;
-
-  Song[66].note = C5;
-  Song[66].size = _16th;
-  Song[66].tempo = 1400;
-  Song[66].space = 10;
-  Song[66].end = 0;
-
-  Song[67].note = D5;
-  Song[67].size = _16th;
-  Song[67].tempo = 1400;
-  Song[67].space = 10;
-  Song[67].end = 0;
-
-  Song[68].note = E5;
-  Song[68].size = _16th;
-  Song[68].tempo = 1400;
-  Song[68].space = 10;
-  Song[68].end = 0;
-
-  Song[69].note = F5;
-  Song[69].size = quarter;
-  Song[69].tempo = 1400;
-  Song[69].space = 100;
-  Song[69].end = 0;
-
-  Song[70].note = rest;
-  Song[70].size = _8th;
-  Song[70].tempo = 1400;
-  Song[70].space = 10;
-  Song[70].end = 0;
-
-  Song[71].note = D5;
-  Song[71].size = _8th;
-  Song[71].tempo = 1400;
-  Song[71].space = 10;
-  Song[71].end = 0;
-
-  Song[72].note = C5;
-  Song[72].size = quarter;
-  Song[72].tempo = 1400;
-  Song[72].space = 100;
-  Song[72].end = 0;
-
-  Song[73].note = As4_Bb4;
-  Song[73].size = quarter;
-  Song[73].tempo = 1400;
-  Song[73].space = 100;
-  Song[73].end = 0;
-
-  Song[74].note = A4;
-  Song[74].size = quarter;
-  Song[74].tempo = 1400;
-  Song[74].space = 100;
-  Song[74].end = 0;
-
-  Song[75].note = rest;
-  Song[75].size = quarter;
-  Song[75].tempo = 1400;
-  Song[75].space = 100;
-  Song[75].end = 0;
-
-  Song[76].note = G4;
-  Song[76].size = quarter;
-  Song[76].tempo = 1400;
-  Song[76].space = 100;
-  Song[76].end = 0;
-
-  Song[77].note = rest;
-  Song[77].size = quarter;
-  Song[77].tempo = 1400;
-  Song[77].space = 100;
-  Song[77].end = 0;
-
-  Song[78].note = F4;
-  Song[78].size = quarter;
-  Song[78].tempo = 1400;
-  Song[78].space = 100;
-  Song[78].end = 0;
-
-  Song[99].note = rest;
-  Song[99].size = quarter;
-  Song[99].tempo = 1400;
-  Song[99].space = 10;
-  Song[99].end = 1;
-
-
-  Save_Note = Song[0].note;  // Needed for vibrato effect
-  INDEX = 0;
-  Music_ON = 0;
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
   while (1)
   {
-    MX_USB_HOST_Process();
+	/**************************
+	 * Show Current Clock Time
+	 **************************/
+	  if ((GPIOC->IDR & 0x3) == 0x0){
 
-    if ((GPIOC->IDR & GPIO_IDR_ID0) == 0) // Switch is ON
-    {
-    	  // Show full display
-    	           Seven_Segment_Digit(7, CHAR_T, 0);        // T
-    	           Seven_Segment_Digit(6, SPACE, 0);    // blank
-    	           Seven_Segment_Digit(5, SPACE, 0);    // blank
-    	           Seven_Segment_Digit(4, SPACE, 0);             // show '0'
-    	           Seven_Segment_Digit(3, 0, 0);             // show '0'
-    	           Seven_Segment_Digit(2, 0, 1);
-    	           Seven_Segment_Digit(1, 0, 0);             // show '0'
-    	           Seven_Segment_Digit(0, 0, 0);
+		  Seven_Segment_Digit(7, CHAR_C, 0);
+		  Seven_Segment_Digit(6, CHAR_L, 0);
+		  Seven_Segment_Digit(5, CHAR_C, 0);
+		  Seven_Segment_Digit(4, SPACE, 0);
 
+		  /*** Hour Set up ***/
+		  int hours = (RTC->TR >> 16) & 0x3F;
 
+		  // Getting ones spot for hours
+		  int hours_tens = (hours >> 4) & 0x7;
+		  Seven_Segment_Digit(3,hours_tens,0);
 
-    }
-    else // Switch is OFF
-    {
-    	 // Show only zeros in digits 4–0
-    	    	      Seven_Segment_Digit(7,CHAR_D, 0);
-    	    	      Seven_Segment_Digit(6,SPACE, 0);
-    	    	      Seven_Segment_Digit(5, 0, 0);
-    	    	      Seven_Segment_Digit(4, 0, 1); // '0'
-    	    	      Seven_Segment_Digit(3, 0, 0); // '0'
-    	    	      Seven_Segment_Digit(2, 0, 1); // '0'
-    	    	      Seven_Segment_Digit(1,0,0);
-    	    	      Seven_Segment_Digit(1,0,0);
+		  // Getting ones spot for hours
+		  int hours_ones = hours & 0xF;
+		  Seven_Segment_Digit(2, hours_ones, 1);
 
 
+		  /*** Minute Set up ***/
+		  int minute = ((RTC->TR >> 8) & 0x7F);
 
-    }
+		  // Getting tens spot for minutes
+		  int minute_tens = (minute >> 4) & 0x7;
+		  Seven_Segment_Digit(1,minute_tens,0);
+
+		  // Getting ones spot for minutes
+		  int minute_ones = minute & 0xF;
+		  Seven_Segment_Digit(0, minute_ones, 0);
+		  HAL_Delay(1);
+	  }
+
+	/*****************************
+	 * Update Clock Configuration
+	 *****************************/
+	  else if ((GPIOC->IDR & 0x3) == 0x2){
+		  int hours_tenths = 0;
+		  int hours_ones = 0;
+		  int minutes_tenths = 0;
+		  int minutes_ones = 0;
+
+		  Seven_Segment_Digit(7, CHAR_A, 0);
+		  Seven_Segment_Digit(6, CHAR_L, 0);
+		  Seven_Segment_Digit(5, CHAR_T, 0);
+		  Seven_Segment_Digit(4, SPACE, 0);
+		  Seven_Segment_Digit(3, CHAR_C, 0);
+		  Seven_Segment_Digit(2, CHAR_L, 0);
+		  Seven_Segment_Digit(1, CHAR_O, 0);
+		  Seven_Segment_Digit(0, CHAR_C, 0);
+
+		  HAL_Delay(2000);
+
+		  Seven_Segment_Digit(7, CHAR_A, 0);
+		  Seven_Segment_Digit(6, CHAR_L, 0);
+		  Seven_Segment_Digit(5, CHAR_T, 0);
+		  Seven_Segment_Digit(4, SPACE, 0);
+		  Seven_Segment_Digit(3, CHAR_H, 0);
+		  Seven_Segment_Digit(2, CHAR_H, 1);
+		  Seven_Segment_Digit(1, CHAR_M, 0);
+		  Seven_Segment_Digit(0, CHAR_M, 0);
+
+		  while((GPIOC->IDR & 0x3) == 0x2){
+			  // Grabs the value of the new hex from switches 15-12
+			  int newHexVal = (GPIOC->IDR >> 12) & 0xF;
+
+			  // Grabs the PC11 value
+			  int addValButton = (GPIOC->IDR >> 11) & 0x1;
+
+			  // Grabs the PC10 value
+			  int switchPossitionButton = (GPIOC->IDR >> 10) & 0x1;
+
+			  // When PC10 is pushed
+			  if(switchPossitionButton == 0){
+
+				  // Change position of index pointer
+				  initial_pos = (initial_pos + 1) % 5;
+
+				  // Change position of LED index indicator
+				  GPIOD->ODR = (1 << initial_pos);
+
+				  // Wait for button release to avoid multiple triggers
+				  while (((GPIOC->IDR >> 10) & 0x1) == 0) {
+					  // Just wait
+				  }
+			  }
+
+			  // Updates based on new position
+			  if(addValButton == 0 && initial_pos == 3){
+				  hours_tenths = newHexVal;
+				  Seven_Segment_Digit(initial_pos, hours_tenths, 0);
+			  } else if (addValButton == 0 && initial_pos == 2){
+				  hours_ones = newHexVal;
+				  Seven_Segment_Digit(initial_pos, hours_ones, 1);
+			  } else if (addValButton == 0 && initial_pos == 1){
+				  minutes_tenths = newHexVal;
+				  Seven_Segment_Digit(initial_pos, minutes_tenths, 0);
+			  } else if (addValButton == 0 && initial_pos == 0){
+				  minutes_ones = newHexVal;
+				  Seven_Segment_Digit(initial_pos, minutes_ones, 0);
+			  } else if(addValButton == 0 && initial_pos == 4){
+
+				  // Notify the user that we are updating the time
+				  GPIOD->ODR = 0xFFFF;
+
+				  // Allows for precise timing
+				  RTC->PRER = 0x102;
+				  RTC->PRER |= 0x007F0000;
+
+				  // Enable Write Privilege
+				  RTC->WPR = 0xCA;
+				  RTC->WPR = 0x53;
+
+				  // Put in INIT mode to update clock
+				  RTC->ISR |= 1<<7;
+
+				  // Wait for update
+				  HAL_Delay(500);
+
+				  // 24 Hour Time
+				  RTC->CR &= ~(1 << 6);
+
+				  // Actual Clock Configurations
+				  RTC->TR = ((hours_tenths) << 20)  |  // Hours tens digit
+				            ((hours_ones) << 16)    |  // Hours units digit
+				            ((minutes_tenths) << 12)|  // Minutes tens digit
+				            ((minutes_ones) << 8)   |  // Minutes units digit
+				            0x00;                      // Seconds set to 0
+
+				  // Clear RSF flag
+				  RTC->ISR &= ~1<<7;
+				  HAL_Delay(500);
+				  GPIOD->ODR = 1<<initial_pos;
+
+			  }
+
+		  }
+	  }
+
+	/**********************
+	 * Show Current Date
+	 **********************/
+	  else if ((GPIOC->IDR & 0x3) == 0x1){
+
+		  /*** Day of Week Display ***/
+		  int weekday = (RTC->DR >> 13) & 0x7;
+		  Seven_Segment_Digit(7, weekday, 0);
+		  Seven_Segment_Digit(6, SPACE, 0);
+
+		  /*** Month       Display ***/
+
+		  int month = (RTC->DR >> 8) & 0x1F;
+
+		  // Getting tens position of month
+		  int month_tens = (month >> 4) & 0x1;
+		  Seven_Segment_Digit(5, month_tens, 0);
+
+		  // Getting ones position of month
+		  int month_ones = month & 0xF;
+		  Seven_Segment_Digit(4, month_ones, 1);  // Decimal point on
+
+		  /*** Day         Display ***/
+
+		  int day = (RTC->DR) & 0x3F;
+
+		  // Getting tens position of day
+		  int days_tens = (day >> 4) & 0x3;
+		  Seven_Segment_Digit(3, days_tens, 0);
+
+		  // Getting ones position of day
+		  int days_ones = day & 0xF;
+		  Seven_Segment_Digit(2, days_ones, 1);  // Decimal point on
+
+		  /*** Year        Display ***/
+
+		  int year = (RTC->DR >> 16) & 0xFF;
+
+		  // Getting tens position of year
+		  int years_tens = (year >> 4) & 0xF;
+		  Seven_Segment_Digit(1, years_tens, 0);
+
+		  // Getting ones position of year
+		  int years_ones = year & 0xF;
+		  Seven_Segment_Digit(0, years_ones, 0);  // Decimal point on
+
+		  HAL_Delay(1);
+	  }
+
+	/*********************
+	 * Date Configuration
+	 *********************/
+	  else if ((GPIOC->IDR & 0x3) == 0x3){
+		  int month_tens = 0;
+		  int month_ones = 0;
+		  int day_tens = 0;
+		  int day_ones = 0;
+		  int year_tens = 0;
+		  int year_ones = 0;
+		  int weekday = 0;
+
+		  /*** Notify that user is updating date ***/
+		  Seven_Segment_Digit(7, CHAR_A, 0);
+		  Seven_Segment_Digit(6, CHAR_L, 0);
+		  Seven_Segment_Digit(5, CHAR_T, 0);
+		  Seven_Segment_Digit(4, SPACE, 0);
+		  Seven_Segment_Digit(3, CHAR_D, 0);
+		  Seven_Segment_Digit(2, CHAR_A, 0);
+		  Seven_Segment_Digit(1, CHAR_T, 0);
+		  Seven_Segment_Digit(0, CHAR_E, 0);
+
+		  HAL_Delay(2000);
+
+		  /*** Show user the format ***/
+		  Seven_Segment_Digit(7, CHAR_D, 0);
+		  Seven_Segment_Digit(6, SPACE, 0);
+		  Seven_Segment_Digit(5, CHAR_M, 0);
+		  Seven_Segment_Digit(4, CHAR_M, 1);
+		  Seven_Segment_Digit(3, CHAR_D, 0);
+		  Seven_Segment_Digit(2, CHAR_D, 1);
+		  Seven_Segment_Digit(1, CHAR_Y, 0);
+		  Seven_Segment_Digit(0, CHAR_Y, 0);
+
+		  while((GPIOC->IDR & 0x3) == 0x3){
+			  // Grabs the value of the new hex from switches 15-12
+			  int newHexVal = (GPIOC->IDR >> 12) & 0xF;
+
+			  // Grabs the PC11 value
+			  int addValButton = (GPIOC->IDR >> 11) & 0x1;
+
+			  // Grabs the PC10 value
+			  int switchPossitionButton = (GPIOC->IDR >> 10) & 0x1;
+
+			  // When PC10 is pushed
+			  if(switchPossitionButton == 0){
+
+				  // Change position of index pointer
+				  initial_pos = (initial_pos + 1) % 8;
+
+				  // Change position of LED index indicator
+				  GPIOD->ODR = (1 << initial_pos);
+
+				  // Wait for button release to avoid multiple triggers
+				  while (((GPIOC->IDR >> 10) & 0x1) == 0) {
+					  // Just wait
+				  }
+			  }
+
+			  // Updates based on new position
+
+			  /*** Weekday Update ***/
+			  if(addValButton == 0 && initial_pos == 6){
+				  weekday = newHexVal;
+				  Seven_Segment_Digit(initial_pos + 1, weekday, 0);
+
+			  /*** Month Update ***/
+		  	  } else if(addValButton == 0 && initial_pos == 5){
+				  month_tens = newHexVal;
+				  Seven_Segment_Digit(initial_pos, month_tens, 0);
+
+			  } else if (addValButton == 0 && initial_pos == 4){
+				  month_ones = newHexVal;
+				  Seven_Segment_Digit(initial_pos, month_ones, 1);
+
+		      /*** Day Update ***/
+			  } else if (addValButton == 0 && initial_pos == 3){
+				  day_tens = newHexVal;
+				  Seven_Segment_Digit(initial_pos, day_tens, 0);
+			  } else if (addValButton == 0 && initial_pos == 2){
+				  day_ones = newHexVal;
+				  Seven_Segment_Digit(initial_pos, day_ones, 1);
+
+			  /*** Year Update ***/
+			  } else if (addValButton == 0 && initial_pos == 1){
+				  year_tens = newHexVal;
+				  Seven_Segment_Digit(initial_pos, year_tens, 0);
+			  } else if (addValButton == 0 && initial_pos == 0){
+				  year_ones = newHexVal;
+				  Seven_Segment_Digit(initial_pos, year_ones, 0);
+
+			  /*** Confirm Changes ***/
+			  } else if(addValButton == 0 && initial_pos == 7){
+
+				  // Notify the user that we are updating the time
+				  GPIOD->ODR = 0xFFFF;
+
+				  // Allows for precise timing
+				  RTC->PRER = 0x102;
+				  RTC->PRER |= 0x007F0000;
+
+				  // Enable Write Privilege
+				  RTC->WPR = 0xCA;
+				  RTC->WPR = 0x53;
+
+				  // Put in INIT mode to update clock
+				  RTC->ISR |= 1<<7;
+
+				  // Wait for update
+				  HAL_Delay(500);
+
+				  // 24 Hour Time
+				  RTC->CR &= ~(1 << 6);
+
+				  // Actual Clock Configurations
+				  RTC->DR = ((year_tens) << 20) |  // Year tens digit
+				            ((year_ones) << 16) |  // Year units digit
+				            ((month_tens) << 12)|  // Month tens digit
+				            ((month_ones) << 8) |  // Month units digit
+				            ((day_tens) << 4)   |  // Day tens digit
+				            day_ones            |  // Day units digit
+							((weekday) << 13);     // Weekday 1-7
+
+				  // Clear RSF flag
+				  RTC->ISR &= ~1<<7;
+				  HAL_Delay(500);
+				  GPIOD->ODR = 1<<initial_pos;
+
+			  }
+		  }
+	  }
+
   }
-
   /* USER CODE END 3 */
-
 }
+
+
 
 /**
   * @brief System Clock Configuration
@@ -720,8 +542,9 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 8;
@@ -748,117 +571,11 @@ void SystemClock_Config(void)
   }
 }
 
-/**
-  * @brief I2C1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_I2C1_Init(void)
-{
 
-  /* USER CODE BEGIN I2C1_Init 0 */
 
-  /* USER CODE END I2C1_Init 0 */
 
-  /* USER CODE BEGIN I2C1_Init 1 */
 
-  /* USER CODE END I2C1_Init 1 */
-  hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 100000;
-  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
-  hi2c1.Init.OwnAddress1 = 0;
-  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c1.Init.OwnAddress2 = 0;
-  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN I2C1_Init 2 */
 
-  /* USER CODE END I2C1_Init 2 */
-
-}
-
-/**
-  * @brief I2S3 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_I2S3_Init(void)
-{
-
-  /* USER CODE BEGIN I2S3_Init 0 */
-
-  /* USER CODE END I2S3_Init 0 */
-
-  /* USER CODE BEGIN I2S3_Init 1 */
-
-  /* USER CODE END I2S3_Init 1 */
-  hi2s3.Instance = SPI3;
-  hi2s3.Init.Mode = I2S_MODE_MASTER_TX;
-  hi2s3.Init.Standard = I2S_STANDARD_PHILIPS;
-  hi2s3.Init.DataFormat = I2S_DATAFORMAT_16B;
-  hi2s3.Init.MCLKOutput = I2S_MCLKOUTPUT_ENABLE;
-  hi2s3.Init.AudioFreq = I2S_AUDIOFREQ_96K;
-  hi2s3.Init.CPOL = I2S_CPOL_LOW;
-  hi2s3.Init.ClockSource = I2S_CLOCK_PLL;
-  hi2s3.Init.FullDuplexMode = I2S_FULLDUPLEXMODE_DISABLE;
-  if (HAL_I2S_Init(&hi2s3) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN I2S3_Init 2 */
-
-  /* USER CODE END I2S3_Init 2 */
-
-}
-
-/**
-  * @brief SPI1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_SPI1_Init(void)
-{
-
-  /* USER CODE BEGIN SPI1_Init 0 */
-
-  /* USER CODE END SPI1_Init 0 */
-
-  /* USER CODE BEGIN SPI1_Init 1 */
-
-  /* USER CODE END SPI1_Init 1 */
-  /* SPI1 parameter configuration*/
-  hspi1.Instance = SPI1;
-  hspi1.Init.Mode = SPI_MODE_MASTER;
-  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
-  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
-  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
-  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi1.Init.CRCPolynomial = 10;
-  if (HAL_SPI_Init(&hspi1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN SPI1_Init 2 */
-
-  /* USER CODE END SPI1_Init 2 */
-
-}
-
-/**
-  * @brief TIM7 Initialization Function
-  * @param None
-  * @retval None
-  */
 static void MX_TIM7_Init(void)
 {
 
@@ -893,16 +610,14 @@ static void MX_TIM7_Init(void)
 }
 
 /**
-  * @brief GPIO Initialization Function
+  * @brief USART3 Initialization Function
   * @param None
   * @retval None
   */
+
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-  /* USER CODE BEGIN MX_GPIO_Init_1 */
-
-  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOE_CLK_ENABLE();
@@ -985,9 +700,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(MEMS_INT2_GPIO_Port, &GPIO_InitStruct);
 
-  /* USER CODE BEGIN MX_GPIO_Init_2 */
-
-  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
