@@ -19,6 +19,24 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "seg7.h"
+#include <stdbool.h>
+
+
+
+#define A4 142
+#define D5 106
+#define quarter 4
+
+typedef struct music {
+    int note;
+    int size;
+    int tempo;
+    int space;
+    char end;
+} Music;
+
+
+
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -60,12 +78,13 @@ UART_HandleTypeDef huart3;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM7_Init(void);
+void playSong(void);
 
 
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
-
+Music Song[100];
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 char ramp = 0;
@@ -100,7 +119,7 @@ char Message[] =
 		SPACE,SPACE,SPACE,SPACE,SPACE,SPACE,SPACE,SPACE,SPACE,SPACE};
 
 /* Declare array for Song */
-Music Song[100];
+
 /* USER CODE END 0 */
 
 /**
@@ -169,8 +188,8 @@ int main(void)
   TIM7->ARR = 1; // Count to 1 then generate interrupt (divide by 2), 125Khz interrupt rate to increment byte counter for 78Hz PWM
   TIM7->DIER |= 1; // Enable timer 7 interrupt
   TIM7->CR1 |= 1; // Enable timer counting
-
-  /* Jeopardy Song */
+//
+//  /* Jeopardy Song */
   Song[0].note = A4;
   Song[0].size = quarter;
   Song[0].tempo = 1400;
@@ -187,20 +206,58 @@ int main(void)
   Song[2].size = quarter;
   Song[2].tempo = 1400;
   Song[2].space = 10;
-  Song[2].end = 0;
+  Song[2].end = 1;
 
 
   static int initial_pos = 0;
+  static int alarm_hr_tens, alarm_hr_ones, alarm_min_tens, alarm_min_ones = 0;
+  static int hours_tens, hours_ones, minute_tens,minute_ones  = 0;
+  bool alarm_triggered = false;
+  bool alarm_set = false;
 
   // Set Initial LED
   GPIOD->ODR = (1 >> 0);
 
   while (1)
   {
+	  // see what switch mode is on
+	  uint8_t mode = GPIOC->IDR & 0x7;
+
+	  // check to see if explicitly switch 4 is on
+	  bool alarm_mode = (GPIOC->IDR & (1 << 3)) != 0;
+
+
+	  // used for checking to see if alarm time is equal to clockl time
+	  int alarm_minutes = (alarm_hr_tens * 10 + alarm_hr_ones) * 60 + (alarm_min_tens * 10 + alarm_min_ones);
+	  int current_minutes = (hours_tens * 10 + hours_ones) * 60 + (minute_tens * 10 + minute_ones);
+
+
+	  if (alarm_minutes == current_minutes && !alarm_triggered && alarm_mode) {
+		  while (alarm_mode ){
+			  // turn on LEDS
+			 	      GPIOD->ODR = 0xFFFF;
+			 	      alarm_triggered = true;
+			 	      INDEX = 0;
+			 	      Music_ON = 1;
+		  }
+
+		  GPIOD->ODR = 0x0000;
+		  	      Music_ON = 0;
+		  	      alarm_triggered = false;
+		  	      alarm_set = false;
+
+	  }else   {
+	      GPIOD->ODR = 0x0000;
+	      Music_ON = 0;
+	      alarm_triggered = false;
+	      alarm_set = false;
+	  }
+
+
 	/**************************
 	 * Show Current Clock Time
 	 **************************/
-	  if ((GPIOC->IDR & 0x3) == 0x0){
+	  if (mode == 0x0){
 
 		  Seven_Segment_Digit(7, CHAR_C, 0);
 		  Seven_Segment_Digit(6, CHAR_L, 0);
@@ -208,14 +265,14 @@ int main(void)
 		  Seven_Segment_Digit(4, SPACE, 0);
 
 		  /*** Hour Set up ***/
-		  int hours = (RTC->TR >> 16) & 0x3F;
+		   int hours = (RTC->TR >> 16) & 0x3F;
 
 		  // Getting ones spot for hours
-		  int hours_tens = (hours >> 4) & 0x7;
+		  hours_tens = (hours >> 4) & 0x7;
 		  Seven_Segment_Digit(3,hours_tens,0);
 
 		  // Getting ones spot for hours
-		  int hours_ones = hours & 0xF;
+		  hours_ones = hours & 0xF;
 		  Seven_Segment_Digit(2, hours_ones, 1);
 
 
@@ -223,11 +280,11 @@ int main(void)
 		  int minute = ((RTC->TR >> 8) & 0x7F);
 
 		  // Getting tens spot for minutes
-		  int minute_tens = (minute >> 4) & 0x7;
+		   minute_tens = (minute >> 4) & 0x7;
 		  Seven_Segment_Digit(1,minute_tens,0);
 
 		  // Getting ones spot for minutes
-		  int minute_ones = minute & 0xF;
+		   minute_ones = minute & 0xF;
 		  Seven_Segment_Digit(0, minute_ones, 0);
 		  HAL_Delay(1);
 	  }
@@ -235,10 +292,10 @@ int main(void)
 	/*****************************
 	 * Update Clock Configuration
 	 *****************************/
-	  else if ((GPIOC->IDR & 0x3) == 0x2){
+	  else if (mode == 0x2){
 		  int hours_tenths = 0;
-		  int hours_ones = 0;
-		  int minutes_tenths = 0;
+		 int  hours_ones = 0;
+		 int  minutes_tenths = 0;
 		  int minutes_ones = 0;
 
 		  Seven_Segment_Digit(7, CHAR_A, 0);
@@ -261,7 +318,7 @@ int main(void)
 		  Seven_Segment_Digit(1, CHAR_M, 0);
 		  Seven_Segment_Digit(0, CHAR_M, 0);
 
-		  while((GPIOC->IDR & 0x3) == 0x2){
+		  while(mode == 0x2){
 			  // Grabs the value of the new hex from switches 15-12
 			  int newHexVal = (GPIOC->IDR >> 12) & 0xF;
 
@@ -341,7 +398,7 @@ int main(void)
 	/**********************
 	 * Show Current Date
 	 **********************/
-	  else if ((GPIOC->IDR & 0x3) == 0x1){
+	  else if (mode == 0x1){
 
 		  /*** Day of Week Display ***/
 		  int weekday = (RTC->DR >> 13) & 0x7;
@@ -390,7 +447,7 @@ int main(void)
 	/*********************
 	 * Date Configuration
 	 *********************/
-	  else if ((GPIOC->IDR & 0x3) == 0x3){
+	  else if (mode == 0x3){
 		  int month_tens = 0;
 		  int month_ones = 0;
 		  int day_tens = 0;
@@ -421,7 +478,7 @@ int main(void)
 		  Seven_Segment_Digit(1, CHAR_Y, 0);
 		  Seven_Segment_Digit(0, CHAR_Y, 0);
 
-		  while((GPIOC->IDR & 0x3) == 0x3){
+		  while(mode == 0x3){
 			  // Grabs the value of the new hex from switches 15-12
 			  int newHexVal = (GPIOC->IDR >> 12) & 0xF;
 
@@ -516,8 +573,105 @@ int main(void)
 				  GPIOD->ODR = 1<<initial_pos;
 
 			  }
+
 		  }
 	  }
+	  // Show what time the alarm is set to
+	  else if(mode == 0x4){
+	  				  Seven_Segment_Digit(7, CHAR_A, 0);
+	  				  Seven_Segment_Digit(6, CHAR_L, 0);
+	  				  Seven_Segment_Digit(5, SPACE, 0);
+	  				  Seven_Segment_Digit(4, SPACE, 0);
+	  				  Seven_Segment_Digit(3, alarm_hr_tens, 0);
+	  				  Seven_Segment_Digit(2, alarm_hr_ones, 1);
+	  				  Seven_Segment_Digit(1, alarm_min_tens, 0);
+	  				  Seven_Segment_Digit(0, alarm_min_ones, 0);
+
+
+
+	 }
+	  // Alter the alarm time
+	  else if(mode == 0x6){
+				  Seven_Segment_Digit(7, CHAR_A, 0);
+				  Seven_Segment_Digit(6, CHAR_L, 0);
+				  Seven_Segment_Digit(5, CHAR_T, 0);
+				  Seven_Segment_Digit(4, SPACE, 0);
+				  Seven_Segment_Digit(3, CHAR_A, 0);
+				  Seven_Segment_Digit(2, CHAR_L, 0);
+				  Seven_Segment_Digit(1, SPACE, 0);
+				  Seven_Segment_Digit(0, SPACE, 0);
+
+				  HAL_Delay(2000);
+
+				  Seven_Segment_Digit(7, CHAR_A, 0);
+				  Seven_Segment_Digit(6, CHAR_L, 0);
+				  Seven_Segment_Digit(5, SPACE, 0);
+				  Seven_Segment_Digit(4, SPACE, 0);
+				  Seven_Segment_Digit(3, CHAR_H, 0);
+				  Seven_Segment_Digit(2, CHAR_H, 1);
+				  Seven_Segment_Digit(1, CHAR_M, 0);
+				  Seven_Segment_Digit(0, CHAR_M, 0);
+
+
+
+				  while((mode == 0x6)){
+					  // Grabs the value of the new hex from switches 15-12
+							  int newHexVal = (GPIOC->IDR >> 12) & 0xF;
+
+							  // Grabs the PC11 value
+							  int addValButton = (GPIOC->IDR >> 11) & 0x1;
+
+							  // Grabs the PC10 value
+							  int switchPossitionButton = (GPIOC->IDR >> 10) & 0x1;
+
+							  // When PC10 is pushed
+							  if(switchPossitionButton == 0){
+
+								  // Change position of index pointer
+								  initial_pos = (initial_pos + 1) % 5;
+
+								  // Change position of LED index indicator
+								  GPIOD->ODR = (1 << initial_pos);
+
+								  // Wait for button release to avoid multiple triggers
+								  while (((GPIOC->IDR >> 10) & 0x1) == 0) {
+									  // Just wait
+								  }
+							  }
+
+							  // Updates based on new position
+							  if(addValButton == 0 && initial_pos == 3){
+								  alarm_hr_tens = newHexVal;
+								  Seven_Segment_Digit(initial_pos, alarm_hr_tens, 0);
+							  } else if (addValButton == 0 && initial_pos == 2){
+								  alarm_hr_ones = newHexVal;
+								  Seven_Segment_Digit(initial_pos, alarm_hr_ones, 1);
+							  } else if (addValButton == 0 && initial_pos == 1){
+								  alarm_min_tens = newHexVal;
+								  Seven_Segment_Digit(initial_pos, alarm_min_tens, 0);
+							  } else if (addValButton == 0 && initial_pos == 0){
+								  alarm_min_ones = newHexVal;
+								  Seven_Segment_Digit(initial_pos,alarm_min_ones, 0);
+							  } else if(addValButton == 0 && initial_pos == 4){
+
+								  // Notify the user that we are updating the time
+								  GPIOD->ODR = 0xFFFF;
+								  HAL_Delay(500);
+								  GPIOD->ODR = 0x0;
+								  alarm_set = true;
+
+
+							  }
+
+				  }
+
+
+
+
+	  }
+
+
+
 
   }
   /* USER CODE END 3 */
@@ -700,6 +854,27 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(MEMS_INT2_GPIO_Port, &GPIO_InitStruct);
 
+}
+
+void playSong() {
+    for (int i = 0; i < 100; i++) {
+        if (Song[i].end == 1) {
+            break;  // End of song
+        }
+
+        TONE = Song[i].note;
+
+        // Set note length
+        int duration = Song[i].tempo / Song[i].size;
+
+        // Optionally: wait before next note
+        COUNT = 0;
+        while (COUNT < duration) {
+            // Wait – COUNT should be incremented by TIM7 ISR
+        }
+
+        HAL_Delay(Song[i].space);  // Optional space between notes
+    }
 }
 
 /* USER CODE BEGIN 4 */
